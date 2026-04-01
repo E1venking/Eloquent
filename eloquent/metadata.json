@@ -1,0 +1,5 @@
+{
+  "name": "Eloquent",
+  "description": "An AI-assisted English speaking platform for professionals to practice conversation with AI avatars at their own level.",
+  "requestFramePermissions": ["microphone"]
+}

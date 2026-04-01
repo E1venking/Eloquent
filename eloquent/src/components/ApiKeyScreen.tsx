@@ -21,10 +21,6 @@ export default function ApiKeyScreen({ onNext }: { onNext: () => void; key?: str
             onNext();
             return;
           }
-        } else {
-          // If not running inside the AI Studio environment, skip this step
-          onNext();
-          return;
         }
       } catch (e) {
         console.error(e);
@@ -82,27 +78,20 @@ export default function ApiKeyScreen({ onNext }: { onNext: () => void; key?: str
       </p>
 
       <div className="bg-white p-8 rounded-xl border border-stone-200 shadow-sm w-full mb-10 text-left">
-        <h3 className="font-semibold text-blue-950 mb-4 text-lg tracking-tight">Configuration Steps</h3>
-        <ol className="list-decimal list-inside text-stone-600 space-y-3 mb-6 leading-relaxed">
-          <li>Navigate to <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-950 font-medium hover:underline inline-flex items-center gap-1">Google AI Studio <ExternalLink size={14} /></a>.</li>
-          <li>Authenticate with your Google credentials.</li>
-          <li>Select <strong>"Create API key"</strong>.</li>
-          <li>Copy the generated credential.</li>
-        </ol>
-        
-        <div className="mt-8 pt-8 border-t border-stone-100">
-          <label htmlFor="apiKey" className="block text-sm font-medium text-stone-700 mb-3">
-            Manual Key Entry
-          </label>
-          <input
-            type="password"
-            id="apiKey"
-            value={apiKeyInput}
-            onChange={(e) => setApiKeyInput(e.target.value)}
-            placeholder="AIzaSy..."
-            className="w-full px-4 py-3 rounded-lg border border-stone-300 focus:ring-2 focus:ring-blue-950 focus:border-transparent outline-none transition-all text-stone-900"
-          />
-        </div>
+        <label htmlFor="apiKey" className="block text-sm font-medium text-stone-700 mb-3">
+          Enter your Gemini API Key
+        </label>
+        <input
+          type="password"
+          id="apiKey"
+          value={apiKeyInput}
+          onChange={(e) => setApiKeyInput(e.target.value)}
+          placeholder="AIzaSy..."
+          className="w-full px-4 py-3 rounded-lg border border-stone-300 focus:ring-2 focus:ring-blue-950 focus:border-transparent outline-none transition-all text-stone-900 mb-3"
+        />
+        <p className="text-sm text-stone-500">
+          Don't have an API key? Get one from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-950 font-medium hover:underline inline-flex items-center gap-1">Google AI Studio <ExternalLink size={12} /></a>.
+        </p>
       </div>
 
       <button

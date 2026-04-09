@@ -13,6 +13,7 @@ import AvatarSelection from './components/AvatarSelection';
 import LevelSelection from './components/LevelSelection';
 import ConversationScreen from './components/ConversationScreen';
 import ApiKeyScreen from './components/ApiKeyScreen';
+import { clearApiKey } from './services/ai';
 
 export default function App() {
   const [isKeyVerified, setIsKeyVerified] = useState(false);
@@ -30,6 +31,12 @@ export default function App() {
     setSelectedLevel(null);
   };
 
+  const resetApiKey = () => {
+    clearApiKey();
+    setIsKeyVerified(false);
+    restart();
+  };
+
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 font-sans selection:bg-blue-900/20 selection:text-blue-950">
       <header className="bg-white border-b border-stone-200 sticky top-0 z-10">
@@ -42,8 +49,16 @@ export default function App() {
             </div>
             Eloquent
           </div>
-          
+
           <div className="flex items-center gap-4">
+            {isKeyVerified && (
+              <button
+                onClick={resetApiKey}
+                className="text-sm font-medium text-stone-500 hover:text-blue-950 transition-colors"
+              >
+                Change API Key
+              </button>
+            )}
             {isKeyVerified && step > 0 && step < 4 && (
               <div className="hidden md:flex items-center gap-2 text-sm font-medium text-stone-400">
                 <span className={step >= 1 ? 'text-blue-950' : ''}>Topic</span>
@@ -74,6 +89,7 @@ export default function App() {
               onChangeTopic={() => setStep(1)}
               onChangeAvatar={() => setStep(2)}
               onChangeLevel={() => setStep(3)}
+              onResetKey={resetApiKey}
             />
           )}
         </AnimatePresence>

@@ -2,19 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { KeyRound, ArrowRight, ExternalLink } from 'lucide-react';
 import { useSound } from '../hooks/useSound';
+import { clearApiKey, hasStoredApiKey, saveApiKey, validateApiKey } from '../services/ai';
 
 export default function ApiKeyScreen({ onNext }: { onNext: () => void; key?: string }) {
   const [isChecking, setIsChecking] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const { playSound } = useSound();
 
   useEffect(() => {
     const checkKey = async () => {
       try {
-        if (localStorage.getItem('CUSTOM_API_KEY')) {
+        if (hasStoredApiKey()) {
           onNext();
           return;
         }
+
         if (typeof (window as any).aistudio !== 'undefined') {
           const hasKey = await (window as any).aistudio.hasSelectedApiKey();
           if (hasKey) {
@@ -22,33 +26,55 @@ export default function ApiKeyScreen({ onNext }: { onNext: () => void; key?: str
             return;
           }
         }
-      } catch (e) {
-        console.error(e);
+      } catch (error) {
+        console.error(error);
       } finally {
         setIsChecking(false);
       }
     };
+
     checkKey();
   }, [onNext]);
 
   const handleConnect = async () => {
     playSound('click');
+    setErrorMessage('');
+
     if (apiKeyInput.trim()) {
-      localStorage.setItem('CUSTOM_API_KEY', apiKeyInput.trim());
-      onNext();
-      return;
+      setIsSubmitting(true);
+
+      try {
+        const isValid = await validateApiKey(apiKeyInput);
+
+        if (!isValid) {
+          clearApiKey();
+          setErrorMessage('This API key could not be verified. Please check the key and try again.');
+          return;
+        }
+
+        saveApiKey(apiKeyInput);
+        onNext();
+        return;
+      } catch (error) {
+        console.error(error);
+        clearApiKey();
+        setErrorMessage('Something went wrong while checking your API key. Please try again.');
+        return;
+      } finally {
+        setIsSubmitting(false);
+      }
     }
 
     try {
       if (typeof (window as any).aistudio !== 'undefined') {
         await (window as any).aistudio.openSelectKey();
-        // Assume success to mitigate race conditions as per platform guidelines
         onNext();
       } else {
-        onNext();
+        setErrorMessage('Please enter your Gemini API key first.');
       }
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
+      setErrorMessage('The key picker could not be opened. Please paste your key manually.');
     }
   };
 
@@ -74,7 +100,7 @@ export default function ApiKeyScreen({ onNext }: { onNext: () => void; key?: str
         Authentication Required
       </h1>
       <p className="text-lg text-stone-600 mb-10 leading-relaxed">
-        To access Eloquent, please provide your Google Gemini API key. This ensures a secure, private connection utilizing your dedicated resources.
+        To access Eloquent, please provide your Google Gemini API key. The key is stored only in this browser on this device.
       </p>
 
       <div className="bg-white p-8 rounded-xl border border-stone-200 shadow-sm w-full mb-10 text-left">
@@ -88,18 +114,35 @@ export default function ApiKeyScreen({ onNext }: { onNext: () => void; key?: str
           onChange={(e) => setApiKeyInput(e.target.value)}
           placeholder="AIzaSy..."
           className="w-full px-4 py-3 rounded-lg border border-stone-300 focus:ring-2 focus:ring-blue-950 focus:border-transparent outline-none transition-all text-stone-900 mb-3"
+          autoComplete="off"
+          spellCheck={false}
         />
         <p className="text-sm text-stone-500">
-          Don't have an API key? Get one from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-950 font-medium hover:underline inline-flex items-center gap-1">Google AI Studio <ExternalLink size={12} /></a>.
+          Don&apos;t have an API key? Get one from{' '}
+          <a
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-950 font-medium hover:underline inline-flex items-center gap-1"
+          >
+            Google AI Studio <ExternalLink size={12} />
+          </a>.
         </p>
+        {errorMessage && (
+          <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {errorMessage}
+          </p>
+        )}
       </div>
 
       <button
         onClick={handleConnect}
-        className="group relative inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-medium text-white bg-blue-950 rounded-lg overflow-hidden transition-all hover:bg-blue-900 active:scale-[0.98] shadow-lg shadow-blue-950/20"
+        disabled={isSubmitting}
+        className="group relative inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-medium text-white bg-blue-950 rounded-lg overflow-hidden transition-all hover:bg-blue-900 active:scale-[0.98] shadow-lg shadow-blue-950/20 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <span className="relative z-10 flex items-center gap-2">
-          {apiKeyInput.trim() ? 'Authenticate' : 'Select Credential'} <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform text-amber-400" />
+          {isSubmitting ? 'Checking key...' : 'Authenticate'}{' '}
+          <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform text-amber-400" />
         </span>
       </button>
     </motion.div>

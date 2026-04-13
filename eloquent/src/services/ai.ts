@@ -106,9 +106,11 @@ export const generateSpeech = async (text: string, voiceName: string): Promise<s
   try {
     const ai = new GoogleGenAI({ apiKey: getApiKeyOrThrow() });
 
+    const prompt = `Speak naturally, fluently, and conversationally with clear pronunciation and a warm, human delivery:\n\n${text}`;
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-preview-tts',
-      contents: [{ parts: [{ text }] }],
+      contents: [{ parts: [{ text: prompt }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {

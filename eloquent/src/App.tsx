@@ -94,6 +94,14 @@ export default function App() {
           )}
         </AnimatePresence>
       </main>
+
+      <footer className="border-t border-stone-200 bg-white mt-8">
+        <div className="max-w-5xl mx-auto px-4 h-12 flex items-center justify-center">
+          <p className="text-sm text-stone-400">
+            Prepared by Instructor Murat Furkan UĞUR
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -8,33 +8,39 @@ export function useSpeech(onResult: (text: string) => void) {
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
 
+  // Keep a stable ref to onResult so the SpeechRecognition instance is
+  // created only once — not re-created every render when the callback changes.
+  const onResultRef = useRef(onResult);
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = false;
-        recognitionRef.current.interimResults = false;
-        recognitionRef.current.lang = 'en-US';
-
-        recognitionRef.current.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          onResult(transcript);
-        };
-
-        recognitionRef.current.onend = () => {
-          setIsListening(false);
-        };
-
-        recognitionRef.current.onerror = (event: any) => {
-          if (event.error !== 'no-speech') {
-            console.error('Speech recognition error', event.error);
-          }
-          setIsListening(false);
-        };
-      }
-    }
+    onResultRef.current = onResult;
   }, [onResult]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      onResultRef.current(transcript);
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = (event: any) => {
+      if (event.error !== 'no-speech') {
+        console.error('Speech recognition error', event.error);
+      }
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    // Intentionally empty deps — run once on mount only.
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startListening = useCallback(() => {
     if (recognitionRef.current) {
@@ -56,12 +62,15 @@ export function useSpeech(onResult: (text: string) => void) {
     }
   }, []);
 
-  const playPcmAudio = async (base64Audio: string) => {
+  const getAudioContext = () => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
-    const audioContext = audioContextRef.current;
+    return audioContextRef.current;
+  };
 
+  const playPcmAudio = async (base64Audio: string) => {
+    const audioContext = getAudioContext();
     if (audioContext.state === 'suspended') {
       await audioContext.resume();
     }
@@ -77,7 +86,7 @@ export function useSpeech(onResult: (text: string) => void) {
     const float32Array = new Float32Array(bytes.length / 2);
     const dataView = new DataView(bytes.buffer);
     for (let i = 0; i < float32Array.length; i++) {
-      const int16 = dataView.getInt16(i * 2, true); // little-endian
+      const int16 = dataView.getInt16(i * 2, true);
       float32Array[i] = int16 / 32768;
     }
 
@@ -85,54 +94,39 @@ export function useSpeech(onResult: (text: string) => void) {
     audioBuffer.getChannelData(0).set(float32Array);
 
     if (sourceRef.current) {
-      sourceRef.current.stop();
-      sourceRef.current.disconnect();
+      try { sourceRef.current.stop(); sourceRef.current.disconnect(); } catch (_) {}
     }
 
     const source = audioContext.createBufferSource();
     source.buffer = audioBuffer;
     source.connect(audioContext.destination);
     sourceRef.current = source;
-
-    source.onended = () => {
-      setIsSpeaking(false);
-    };
-
+    source.onended = () => setIsSpeaking(false);
     source.start();
     setIsSpeaking(true);
   };
 
   const speak = useCallback(async (text: string, voiceName: string) => {
     if (sourceRef.current) {
-      sourceRef.current.stop();
-      sourceRef.current.disconnect();
+      try { sourceRef.current.stop(); sourceRef.current.disconnect(); } catch (_) {}
       sourceRef.current = null;
     }
     setIsSpeaking(true);
-    
     const base64Audio = await generateSpeech(text, voiceName);
     if (base64Audio) {
       await playPcmAudio(base64Audio);
     } else {
       setIsSpeaking(false);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stopSpeaking = useCallback(() => {
     if (sourceRef.current) {
-      sourceRef.current.stop();
-      sourceRef.current.disconnect();
+      try { sourceRef.current.stop(); sourceRef.current.disconnect(); } catch (_) {}
       sourceRef.current = null;
     }
     setIsSpeaking(false);
   }, []);
 
-  return {
-    isListening,
-    isSpeaking,
-    startListening,
-    stopListening,
-    speak,
-    stopSpeaking
-  };
+  return { isListening, isSpeaking, startListening, stopListening, speak, stopSpeaking };
 }

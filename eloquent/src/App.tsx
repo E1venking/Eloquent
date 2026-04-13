@@ -38,7 +38,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans selection:bg-blue-900/20 selection:text-blue-950">
+    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans selection:bg-blue-900/20 selection:text-blue-950 flex flex-col">
       <header className="bg-white border-b border-stone-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 font-bold text-xl text-blue-950 cursor-pointer tracking-tight" onClick={restart}>
@@ -72,7 +72,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-5xl mx-auto px-4 py-8 flex-1 w-full">
         <AnimatePresence mode="wait">
           {!isKeyVerified && <ApiKeyScreen key="apikey" onNext={() => setIsKeyVerified(true)} />}
           {isKeyVerified && step === 0 && <WelcomeScreen key="welcome" onNext={nextStep} />}
@@ -95,12 +95,8 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      <footer className="border-t border-stone-200 bg-white mt-8">
-        <div className="max-w-5xl mx-auto px-4 h-12 flex items-center justify-center">
-          <p className="text-sm text-stone-400">
-            Prepared by Instructor Murat Furkan UĞUR
-          </p>
-        </div>
+      <footer className="py-6 text-center text-stone-500 text-sm font-medium">
+        Prepared by Instructor Murat Furkan UĞUR
       </footer>
     </div>
   );

@@ -24,13 +24,17 @@ export const clearApiKey = (): void => {
 
 const getApiKeyOrThrow = (): string => {
   const apiKey = getStoredApiKey();
-  if (!apiKey) throw new Error('Missing Gemini API key.');
+
+  if (!apiKey) {
+    throw new Error('Missing Gemini API key.');
+  }
+
   return apiKey;
 };
 
 export const isAuthenticationError = (error: unknown): boolean => {
-  const message =
-    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+
   return (
     message.includes('api key') ||
     message.includes('invalid') ||
@@ -42,14 +46,15 @@ export const isAuthenticationError = (error: unknown): boolean => {
   );
 };
 
-// Use a lightweight model just to confirm the key is valid — fast & cheap.
 export const validateApiKey = async (apiKey: string): Promise<boolean> => {
   try {
     const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+
     await ai.models.generateContent({
-      model: 'gemini-2.0-flash-lite',
-      contents: 'Say OK.',
+      model: 'gemini-3-flash-preview',
+      contents: 'Reply with the word OK only.',
     });
+
     return true;
   } catch (error) {
     console.error('API key validation failed:', error);
@@ -88,10 +93,11 @@ STARTING THE CONVERSATION:
 When the user sends the message "START_CONVERSATION", you must reply by introducing yourself briefly and asking your first question about ${topic}.`;
 
   return ai.chats.create({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     config: {
       systemInstruction,
       temperature: 0.7,
+      maxOutputTokens: 150,
     },
   });
 };
@@ -113,8 +119,7 @@ export const generateSpeech = async (text: string, voiceName: string): Promise<s
       },
     });
 
-    const base64Audio =
-      response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     return base64Audio || null;
   } catch (error) {
     console.error('Error generating speech:', error);

@@ -1,5 +1,3 @@
-import { GoogleGenAI, Modality } from '@google/genai';
-
 const STORAGE_KEY = 'CUSTOM_API_KEY';
 
 export const getStoredApiKey = (): string | null => {
@@ -22,14 +20,15 @@ export const clearApiKey = (): void => {
   localStorage.removeItem(STORAGE_KEY);
 };
 
-const getApiKeyOrThrow = (): string => {
+const getAuthHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
   const apiKey = getStoredApiKey();
-
-  if (!apiKey) {
-    throw new Error('Missing Gemini API key.');
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
   }
-
-  return apiKey;
+  return headers;
 };
 
 export const isAuthenticationError = (error: unknown): boolean => {
@@ -48,14 +47,16 @@ export const isAuthenticationError = (error: unknown): boolean => {
 
 export const validateApiKey = async (apiKey: string): Promise<boolean> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
-
-    await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: 'Reply with the word OK only.',
+    const response = await fetch('/api/validate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey.trim()}`
+      }
     });
-
-    return true;
+    if (!response.ok) return false;
+    const data = await response.json();
+    return !!data.valid;
   } catch (error) {
     console.error('API key validation failed:', error);
     return false;
@@ -68,61 +69,65 @@ export const createChatSession = (
   avatarPersonality: string,
   level: string
 ) => {
-  const ai = new GoogleGenAI({ apiKey: getApiKeyOrThrow() });
+  const history: { role: string, text: string }[] = [];
 
-  const systemInstruction = `You are an AI English conversation partner.
-Your name is ${avatarName}. Your personality is ${avatarPersonality}.
-The student wants to practice speaking English.
-Topic: ${topic}
-Student's English Level: ${level}
+  return {
+    sendMessage: async ({ message }: { message: string }) => {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          topic,
+          avatarName,
+          avatarPersonality,
+          level,
+          history,
+          message
+        })
+      });
 
-YOUR BEHAVIOR:
-- Speak STRICTLY at the ${level} English level.
-- A1: Very short, simple words.
-- A2: Simple everyday language.
-- B1: Natural everyday discussion.
-- B2: More flexible, abstract.
-- Be encouraging, patient, and warm.
-- Ask ONE question at a time.
-- Keep your responses short. Do not overwhelm the student.
-- Gently keep the student talking (e.g., "Can you say more?", "Why do you think that?").
-- Do not correct every mistake; focus on fluency.
-- Never break character.
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
 
-STARTING THE CONVERSATION:
-When the user sends the message "START_CONVERSATION", you must reply by introducing yourself briefly and asking your first question about ${topic}.`;
+      const data = await response.json();
+      
+      history.push({ role: 'user', text: message });
+      history.push({ role: 'model', text: data.text });
 
-  return ai.chats.create({
-    model: 'gemini-2.5-flash',
-    config: {
-      systemInstruction,
-      temperature: 0.7,
-      maxOutputTokens: 150,
-    },
-  });
+      return { text: data.text };
+    }
+  };
 };
 
-export const generateSpeech = async (text: string, voiceName: string): Promise<string | null> => {
+export const generateSpeech = async (
+  text: string, 
+  voiceName: string,
+  level: string = 'B1',
+  avatarName: string = 'Assistant',
+  avatarPersonality: string = 'helpful'
+): Promise<string | null> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: getApiKeyOrThrow() });
-
-    const prompt = `Speak naturally, fluently, and conversationally with clear pronunciation and a warm, human delivery:\n\n${text}`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-preview-tts',
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName },
-          },
-        },
-      },
+    const response = await fetch('/api/tts', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        text,
+        voiceName,
+        level,
+        avatarName,
+        avatarPersonality
+      })
     });
 
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    return base64Audio || null;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.audio || null;
   } catch (error) {
     console.error('Error generating speech:', error);
     return null;

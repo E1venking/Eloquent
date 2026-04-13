@@ -54,7 +54,7 @@ export default function ConversationScreen({
         };
 
         setMessages([newMsg]);
-        speak(text, avatar.voiceName);
+        speak(text, avatar.voiceName, level.name, avatar.name, avatar.personality);
       } catch (error) {
         console.error('Failed to start chat', error);
 
@@ -119,7 +119,7 @@ export default function ConversationScreen({
       };
 
       setMessages((prev) => [...prev, modelMsg]);
-      speak(text, avatar.voiceName);
+      speak(text, avatar.voiceName, level.name, avatar.name, avatar.personality);
     } catch (error) {
       console.error('Chat error', error);
 
@@ -151,7 +151,7 @@ export default function ConversationScreen({
     playSound('click');
     const lastModelMsg = [...messages].reverse().find((m) => m.role === 'model');
     if (lastModelMsg) {
-      speak(lastModelMsg.text, avatar.voiceName);
+      speak(lastModelMsg.text, avatar.voiceName, level.name, avatar.name, avatar.personality);
     }
   };
 

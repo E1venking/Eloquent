@@ -160,7 +160,13 @@ export function useSpeech(onResult: (text: string) => void) {
     window.speechSynthesis.speak(utterance);
   }, []);
 
-  const speak = useCallback(async (text: string, voiceName: string) => {
+  const speak = useCallback(async (
+    text: string, 
+    voiceName: string,
+    level: string = 'B1',
+    avatarName: string = 'Assistant',
+    avatarPersonality: string = 'helpful'
+  ) => {
     stopSpeaking(); // Stop any current audio and increment requestId
     const currentRequestId = requestIdRef.current;
     
@@ -171,7 +177,7 @@ export function useSpeech(onResult: (text: string) => void) {
       let base64Audio = cacheRef.current.get(cacheKey);
 
       if (!base64Audio) {
-        base64Audio = await generateSpeech(text, voiceName);
+        base64Audio = await generateSpeech(text, voiceName, level, avatarName, avatarPersonality);
         if (base64Audio) {
           cacheRef.current.set(cacheKey, base64Audio);
         }
